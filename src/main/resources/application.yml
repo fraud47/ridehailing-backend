@@ -1,0 +1,52 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: ride-hailing-ride-service
+  datasource:
+    url: jdbc:postgresql://localhost:5433/ride_hailing_db
+    username: ride_user
+    password: ride_password
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: true
+  liquibase:
+    enabled: true
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${AUTH_SERVER_ISSUER_URI:http://localhost:8180/realms/ride-hailing}
+          jwk-set-uri: ${AUTH_SERVER_JWK_SET_URI:http://localhost:8180/realms/ride-hailing/protocol/openid-connect/certs}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+springdoc:
+  show-actuator: true
+
+logging:
+  level:
+    org.springframework.web: INFO
+    org.hibernate.SQL: INFO
+
+app:
+  auth:
+    jwt:
+      issuer-uri: ${APP_JWT_ISSUER_URI:http://localhost:8080}
+      secret: ${APP_JWT_SECRET:ride-hailing-local-jwt-secret-2026}
+      access-token-ttl: ${APP_JWT_ACCESS_TOKEN_TTL:PT12H}
+    external:
+      issuer-uri: ${AUTH_SERVER_ISSUER_URI:http://localhost:8180/realms/ride-hailing}
+      jwk-set-uri: ${AUTH_SERVER_JWK_SET_URI:http://localhost:8180/realms/ride-hailing/protocol/openid-connect/certs}
+    google:
+      client-ids: ${GOOGLE_CLIENT_IDS:}

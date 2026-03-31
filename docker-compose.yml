@@ -1,0 +1,30 @@
+version: "3.9"
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ride-hailing-postgres
+    environment:
+      POSTGRES_DB: ride_hailing_db
+      POSTGRES_USER: ride_user
+      POSTGRES_PASSWORD: ride_password
+    ports:
+      - "5433:5432"
+    volumes:
+      - ride-hailing-db:/var/lib/postgresql/data
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:25.0
+    container_name: ride-hailing-keycloak
+    command:
+      - start-dev
+      - --import-realm
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    ports:
+      - "8180:8080"
+    volumes:
+      - ./docker/keycloak/ride-hailing-realm.json:/opt/keycloak/data/import/ride-hailing-realm.json:ro
+
+volumes:
+  ride-hailing-db:

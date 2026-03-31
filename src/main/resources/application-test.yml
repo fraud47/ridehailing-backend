@@ -1,0 +1,31 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:ride_hailing_test;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  liquibase:
+    enabled: true
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost/test-issuer
+          jwk-set-uri: http://localhost/test-jwks
+
+app:
+  auth:
+    jwt:
+      issuer-uri: http://localhost:8080
+      secret: ride-hailing-local-jwt-secret-2026
+      access-token-ttl: PT1H
+    external:
+      issuer-uri: http://localhost/test-issuer
+      jwk-set-uri: http://localhost/test-jwks
+    google:
+      client-ids:
+        - test-google-client-id
