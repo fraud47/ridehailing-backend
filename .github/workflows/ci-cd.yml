@@ -1,0 +1,66 @@
+name: CI/CD
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-build-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Run tests
+        run: ./mvnw test
+
+      - name: Build container image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          tags: ridehailing-backend:ci
+
+      - name: Prepare SSH key
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "${{ secrets.SERVER_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Copy deployment assets
+        run: |
+          ssh "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}" "mkdir -p \$HOME/apps/ride-hailing-backend"
+          tar --exclude=.git --exclude=target -czf - . | ssh "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}" "tar -xzf - -C \$HOME/apps/ride-hailing-backend"
+          ssh "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}" "chmod +x \$HOME/apps/ride-hailing-backend/deploy/remote-deploy.sh"
+
+      - name: Write environment file on server
+        run: |
+          ssh "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}" "cat > \$HOME/apps/ride-hailing-backend/.env <<'EOF'
+          IMAGE_NAME=ridehailing-backend:latest
+          DB_NAME=${{ secrets.DB_NAME }}
+          DB_USERNAME=${{ secrets.DB_USERNAME }}
+          DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+          APP_JWT_SECRET=${{ secrets.APP_JWT_SECRET }}
+          APP_JWT_ISSUER_URI=${{ secrets.APP_JWT_ISSUER_URI }}
+          GOOGLE_CLIENT_IDS=${{ secrets.GOOGLE_CLIENT_IDS }}
+          AUTH_SERVER_ISSUER_URI=${{ secrets.AUTH_SERVER_ISSUER_URI }}
+          AUTH_SERVER_JWK_SET_URI=${{ secrets.AUTH_SERVER_JWK_SET_URI }}
+          EOF"
+
+      - name: Deploy on server
+        run: |
+          ssh "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}" "cd \$HOME/apps/ride-hailing-backend && APP_DIR=\$HOME/apps/ride-hailing-backend ./deploy/remote-deploy.sh"

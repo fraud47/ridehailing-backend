@@ -1,0 +1,46 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ride-hailing-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-ride_hailing_db}
+      POSTGRES_USER: ${DB_USERNAME:-ride_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - ride-hailing-postgres-data:/var/lib/postgresql/data
+    networks:
+      - ride-hailing
+
+  app:
+    image: ${IMAGE_NAME:-ridehailing-backend:latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ride-hailing-backend
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SERVER_PORT: 8080
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${DB_NAME:-ride_hailing_db}
+      SPRING_DATASOURCE_USERNAME: ${DB_USERNAME:-ride_user}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      APP_JWT_SECRET: ${APP_JWT_SECRET}
+      APP_JWT_ISSUER_URI: ${APP_JWT_ISSUER_URI}
+      GOOGLE_CLIENT_IDS: ${GOOGLE_CLIENT_IDS}
+      AUTH_SERVER_ISSUER_URI: ${AUTH_SERVER_ISSUER_URI:-http://localhost:8180/realms/ride-hailing}
+      AUTH_SERVER_JWK_SET_URI: ${AUTH_SERVER_JWK_SET_URI:-http://localhost:8180/realms/ride-hailing/protocol/openid-connect/certs}
+    ports:
+      - "8080:8080"
+    networks:
+      - ride-hailing
+
+networks:
+  ride-hailing:
+
+volumes:
+  ride-hailing-postgres-data:

@@ -1,0 +1,7 @@
+.git
+.github
+.idea
+target
+run.log
+run.err.log
+README.md
