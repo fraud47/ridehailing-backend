@@ -5,6 +5,7 @@ import java.util.UUID;
 
 public record WalletBalanceResponse(
         UUID ownerId,
+        String ownerType,
         BigDecimal balance,
         String currency
 ) {

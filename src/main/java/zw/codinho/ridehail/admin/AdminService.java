@@ -14,12 +14,13 @@ import zw.codinho.ridehail.driver.domain.Driver;
 import zw.codinho.ridehail.driver.domain.DriverRepository;
 import zw.codinho.ridehail.platform.PlatformAccountService;
 import zw.codinho.ridehail.platform.domain.PlatformAccount;
-import zw.codinho.ridehail.rider.RiderService;
 import zw.codinho.ridehail.rider.domain.RiderRepository;
 import zw.codinho.ridehail.ride.domain.RideRepository;
 import zw.codinho.ridehail.ride.domain.RideStatus;
 import zw.codinho.ridehail.shared.exception.BadRequestException;
 import zw.codinho.ridehail.shared.exception.NotFoundException;
+import zw.codinho.ridehail.wallet.WalletService;
+import zw.codinho.ridehail.wallet.domain.WalletOwnerType;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -33,11 +34,11 @@ public class AdminService {
 
     private final DriverService driverService;
     private final DriverRepository driverRepository;
-    private final RiderService riderService;
     private final RiderRepository riderRepository;
     private final RideRepository rideRepository;
     private final PlatformAccountService platformAccountService;
     private final AuthAccountRepository authAccountRepository;
+    private final WalletService walletService;
 
     @Transactional
     public PlatformAccountResponse withdrawPlatformFunds(BigDecimal amount) {
@@ -96,7 +97,9 @@ public class AdminService {
     }
 
     public zw.codinho.ridehail.admin.rest.WalletBalanceResponse depositRiderFunds(UUID riderId, BigDecimal amount) {
-        return riderService.depositFunds(riderId, amount);
+        riderRepository.findById(riderId)
+                .orElseThrow(() -> new NotFoundException("Rider " + riderId + " was not found"));
+        return walletService.deposit(WalletOwnerType.RIDER, riderId, amount);
     }
 
     private PlatformAccountResponse toPlatformResponse(PlatformAccount account) {

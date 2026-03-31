@@ -8,12 +8,12 @@ import zw.codinho.ridehail.rider.domain.Rider;
 import zw.codinho.ridehail.rider.domain.RiderRepository;
 import zw.codinho.ridehail.rider.rest.CreateRiderRequest;
 import zw.codinho.ridehail.rider.rest.RiderResponse;
-import zw.codinho.ridehail.shared.exception.BadRequestException;
 import zw.codinho.ridehail.shared.exception.ConflictException;
 import zw.codinho.ridehail.shared.exception.NotFoundException;
+import zw.codinho.ridehail.wallet.WalletService;
+import zw.codinho.ridehail.wallet.domain.WalletOwnerType;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.List;
 import java.util.UUID;
 
@@ -21,9 +21,8 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class RiderService {
 
-    private static final String CURRENCY = "USD";
-
     private final RiderRepository riderRepository;
+    private final WalletService walletService;
 
     @Transactional
     public RiderResponse createRider(CreateRiderRequest request) {
@@ -41,8 +40,9 @@ public class RiderService {
         rider.setFullName(request.fullName());
         rider.setPhoneNumber(request.phoneNumber());
         rider.setEmailAddress(request.emailAddress());
-
-        return toResponse(riderRepository.save(rider));
+        Rider savedRider = riderRepository.save(rider);
+        walletService.ensureWallet(WalletOwnerType.RIDER, savedRider.getId());
+        return toResponse(savedRider);
     }
 
     @Transactional(readOnly = true)
@@ -67,41 +67,25 @@ public class RiderService {
 
     @Transactional
     public WalletBalanceResponse depositFunds(UUID riderId, BigDecimal amount) {
-        Rider rider = requireRider(riderId);
-        BigDecimal normalizedAmount = normalizeAmount(amount);
-        if (normalizedAmount.signum() <= 0) {
-            throw new BadRequestException("Deposit amount must be greater than zero");
-        }
-
-        rider.setWalletBalance(rider.getWalletBalance().add(normalizedAmount));
-        Rider savedRider = riderRepository.save(rider);
-        return new WalletBalanceResponse(savedRider.getId(), savedRider.getWalletBalance(), CURRENCY);
+        requireRider(riderId);
+        return walletService.deposit(WalletOwnerType.RIDER, riderId, amount);
     }
 
     @Transactional
     public void debitWallet(UUID riderId, BigDecimal amount) {
-        Rider rider = requireRider(riderId);
-        BigDecimal normalizedAmount = normalizeAmount(amount);
-        if (rider.getWalletBalance().compareTo(normalizedAmount) < 0) {
-            throw new BadRequestException("Rider wallet balance is insufficient to complete this ride");
-        }
-
-        rider.setWalletBalance(rider.getWalletBalance().subtract(normalizedAmount));
-        riderRepository.save(rider);
+        requireRider(riderId);
+        walletService.withdraw(WalletOwnerType.RIDER, riderId, amount, "Rider wallet balance is insufficient to complete this ride");
     }
 
     private RiderResponse toResponse(Rider rider) {
+        WalletBalanceResponse wallet = walletService.getWallet(WalletOwnerType.RIDER, rider.getId());
         return new RiderResponse(
                 rider.getId(),
                 rider.getFullName(),
                 rider.getPhoneNumber(),
                 rider.getEmailAddress(),
                 rider.getRating(),
-                rider.getWalletBalance(),
+                wallet.balance(),
                 rider.getCreatedAt());
-    }
-
-    private BigDecimal normalizeAmount(BigDecimal amount) {
-        return amount.setScale(2, RoundingMode.HALF_UP);
     }
 }

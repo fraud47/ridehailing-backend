@@ -15,6 +15,8 @@ import zw.codinho.ridehail.driver.rest.VehicleResponse;
 import zw.codinho.ridehail.shared.exception.BadRequestException;
 import zw.codinho.ridehail.shared.exception.ConflictException;
 import zw.codinho.ridehail.shared.exception.NotFoundException;
+import zw.codinho.ridehail.wallet.WalletService;
+import zw.codinho.ridehail.wallet.domain.WalletOwnerType;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -26,6 +28,7 @@ import java.util.UUID;
 public class DriverService {
 
     private final DriverRepository driverRepository;
+    private final WalletService walletService;
 
     @Transactional
     public DriverResponse createDriver(CreateDriverRequest request) {
@@ -45,8 +48,9 @@ public class DriverService {
         driver.setLicenseNumber(request.licenseNumber());
         driver.setCurrentLatitude(request.currentLatitude());
         driver.setCurrentLongitude(request.currentLongitude());
-
-        return toResponse(driverRepository.save(driver));
+        Driver savedDriver = driverRepository.save(driver);
+        walletService.ensureWallet(WalletOwnerType.DRIVER, savedDriver.getId());
+        return toResponse(savedDriver);
     }
 
     @Transactional
@@ -74,6 +78,10 @@ public class DriverService {
             throw new BadRequestException("Blocked drivers cannot update availability");
         }
 
+        if (request.available() && !walletService.hasPositiveBalance(WalletOwnerType.DRIVER, driverId)) {
+            throw new BadRequestException("A driver must have funds in the wallet before becoming visible");
+        }
+
         if (request.available() && driver.getVehicle() == null) {
             throw new BadRequestException("A driver cannot go available without a registered vehicle");
         }
@@ -93,6 +101,7 @@ public class DriverService {
     public List<DriverResponse> getDrivers() {
         return driverRepository.findAll()
                 .stream()
+                .filter(driver -> walletService.hasPositiveBalance(WalletOwnerType.DRIVER, driver.getId()))
                 .map(this::toResponse)
                 .toList();
     }
@@ -124,16 +133,14 @@ public class DriverService {
 
     @Transactional
     public void creditRideEarnings(UUID driverId, BigDecimal grossFare, BigDecimal commission) {
-        Driver driver = requireDriver(driverId);
+        requireDriver(driverId);
         BigDecimal normalizedGrossFare = normalizeAmount(grossFare);
         BigDecimal normalizedCommission = normalizeAmount(commission);
         BigDecimal netEarnings = normalizedGrossFare.subtract(normalizedCommission);
         if (netEarnings.signum() < 0) {
             throw new BadRequestException("Ride commission cannot exceed the gross fare");
         }
-
-        driver.setWalletBalance(driver.getWalletBalance().add(netEarnings));
-        driverRepository.save(driver);
+        walletService.deposit(WalletOwnerType.DRIVER, driverId, netEarnings);
     }
 
     @Transactional(readOnly = true)
@@ -141,10 +148,12 @@ public class DriverService {
         return driverRepository.findAllByBlockedFalseAndStatus(DriverStatus.AVAILABLE)
                 .stream()
                 .filter(driver -> driver.getVehicle() != null)
+                .filter(driver -> walletService.hasPositiveBalance(WalletOwnerType.DRIVER, driver.getId()))
                 .toList();
     }
 
     public DriverResponse toResponse(Driver driver) {
+        BigDecimal walletBalance = walletService.getWallet(WalletOwnerType.DRIVER, driver.getId()).balance();
         VehicleResponse vehicleResponse = null;
         if (driver.getVehicle() != null) {
             vehicleResponse = new VehicleResponse(
@@ -164,7 +173,7 @@ public class DriverService {
                 driver.getLicenseNumber(),
                 driver.getStatus(),
                 driver.getRating(),
-                driver.getWalletBalance(),
+                walletBalance,
                 driver.isBlocked(),
                 driver.getBlockedReason(),
                 driver.getBlockedAt(),

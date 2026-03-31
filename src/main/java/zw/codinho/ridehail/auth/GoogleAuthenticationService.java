@@ -14,6 +14,8 @@ import zw.codinho.ridehail.rider.domain.Rider;
 import zw.codinho.ridehail.rider.domain.RiderRepository;
 import zw.codinho.ridehail.rider.rest.RiderResponse;
 import zw.codinho.ridehail.shared.exception.BadRequestException;
+import zw.codinho.ridehail.wallet.WalletService;
+import zw.codinho.ridehail.wallet.domain.WalletOwnerType;
 
 import java.util.Optional;
 
@@ -25,6 +27,7 @@ public class GoogleAuthenticationService {
     private final AuthAccountRepository authAccountRepository;
     private final RiderRepository riderRepository;
     private final LocalJwtService localJwtService;
+    private final WalletService walletService;
 
     @Transactional
     public AuthTokenResponse authenticate(GoogleLoginRequest request) {
@@ -50,6 +53,7 @@ public class GoogleAuthenticationService {
         account.setRider(rider);
 
         AuthAccount savedAccount = authAccountRepository.save(account);
+        walletService.ensureWallet(WalletOwnerType.RIDER, rider.getId());
         LocalJwtService.TokenResult tokenResult = localJwtService.issueToken(savedAccount);
 
         return new AuthTokenResponse(
@@ -106,13 +110,14 @@ public class GoogleAuthenticationService {
     }
 
     private RiderResponse toRiderResponse(Rider rider) {
+        var wallet = walletService.getWallet(WalletOwnerType.RIDER, rider.getId());
         return new RiderResponse(
                 rider.getId(),
                 rider.getFullName(),
                 rider.getPhoneNumber(),
                 rider.getEmailAddress(),
                 rider.getRating(),
-                rider.getWalletBalance(),
+                wallet.balance(),
                 rider.getCreatedAt());
     }
 }
