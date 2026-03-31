@@ -1,3 +1,9 @@
+ALTER TABLE riders
+    ADD COLUMN wallet_balance NUMERIC(12, 2) NOT NULL DEFAULT 0.00;
+
+ALTER TABLE drivers
+    ADD COLUMN wallet_balance NUMERIC(12, 2) NOT NULL DEFAULT 0.00;
+
 ALTER TABLE drivers
     ADD COLUMN blocked BOOLEAN NOT NULL DEFAULT FALSE;
 
@@ -18,17 +24,6 @@ CREATE TABLE platform_accounts (
     available_balance NUMERIC(12, 2) NOT NULL,
     total_commission_earned NUMERIC(12, 2) NOT NULL,
     total_withdrawn NUMERIC(12, 2) NOT NULL
-);
-
-CREATE TABLE wallets (
-    id UUID PRIMARY KEY,
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL,
-    updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
-    owner_type VARCHAR(30) NOT NULL,
-    owner_id UUID NOT NULL,
-    balance NUMERIC(12, 2) NOT NULL,
-    currency VARCHAR(10) NOT NULL,
-    CONSTRAINT uq_wallets_owner UNIQUE (owner_type, owner_id)
 );
 
 CREATE TABLE ride_chat_messages (
