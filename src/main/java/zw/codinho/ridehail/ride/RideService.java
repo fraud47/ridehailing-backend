@@ -5,7 +5,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import zw.codinho.ridehail.driver.DriverService;
 import zw.codinho.ridehail.driver.domain.Driver;
-import zw.codinho.ridehail.driver.domain.DriverStatus;
+import zw.codinho.ridehail.platform.PlatformAccountService;
 import zw.codinho.ridehail.rider.RiderService;
 import zw.codinho.ridehail.rider.domain.Rider;
 import zw.codinho.ridehail.ride.domain.Ride;
@@ -32,12 +32,14 @@ public class RideService {
     private static final BigDecimal BASE_FARE = new BigDecimal("2.50");
     private static final BigDecimal RATE_PER_KM = new BigDecimal("1.35");
     private static final BigDecimal SHORT_TRIP_SURGE = new BigDecimal("1.10");
+    private static final BigDecimal PLATFORM_COMMISSION = new BigDecimal("0.20");
     private static final String PRICING_MODEL = "base_plus_distance";
     private static final String CURRENCY = "USD";
 
     private final RideRepository rideRepository;
     private final RiderService riderService;
     private final DriverService driverService;
+    private final PlatformAccountService platformAccountService;
 
     @Transactional(readOnly = true)
     public RideQuoteResponse quoteRide(RideQuoteRequest request) {
@@ -74,6 +76,7 @@ public class RideService {
         ride.setDropoffLongitude(request.dropoffLongitude());
         ride.setDistanceInKm(distanceInKm);
         ride.setQuotedFare(calculateFare(distanceInKm));
+        ride.setPlatformCommission(PLATFORM_COMMISSION);
         ride.setRequestedAt(OffsetDateTime.now());
         ride.setAssignedAt(OffsetDateTime.now());
 
@@ -82,7 +85,7 @@ public class RideService {
 
     @Transactional
     public RideResponse updateRideStatus(UUID rideId, RideStatus nextStatus) {
-        Ride ride = requireRide(rideId);
+        Ride ride = requireRideEntity(rideId);
         validateTransition(ride.getStatus(), nextStatus);
 
         ride.setStatus(nextStatus);
@@ -92,7 +95,12 @@ public class RideService {
         if (nextStatus == RideStatus.COMPLETED) {
             ride.setCompletedAt(OffsetDateTime.now());
             ride.setActualFare(ride.getQuotedFare());
-            driverService.markDriverAvailable(ride.getDriver());
+            riderService.debitWallet(ride.getRider().getId(), ride.getActualFare());
+            if (ride.getDriver() != null) {
+                driverService.creditRideEarnings(ride.getDriver().getId(), ride.getActualFare(), ride.getPlatformCommission());
+                driverService.markDriverAvailable(ride.getDriver());
+            }
+            platformAccountService.captureCommission(ride.getPlatformCommission());
         }
         if (nextStatus == RideStatus.CANCELLED) {
             ride.setCompletedAt(OffsetDateTime.now());
@@ -106,7 +114,7 @@ public class RideService {
 
     @Transactional(readOnly = true)
     public RideResponse getRide(UUID rideId) {
-        return toResponse(requireRide(rideId));
+        return toResponse(requireRideEntity(rideId));
     }
 
     @Transactional(readOnly = true)
@@ -126,12 +134,9 @@ public class RideService {
     }
 
     private Driver findNearestAvailableDriver(BigDecimal pickupLatitude, BigDecimal pickupLongitude) {
-        return driverService.getDrivers().stream()
-                .filter(driver -> driver.status() == DriverStatus.AVAILABLE)
-                .filter(driver -> driver.vehicle() != null)
-                .min((left, right) -> distanceToPickup(left.currentLatitude(), left.currentLongitude(), pickupLatitude, pickupLongitude)
-                        .compareTo(distanceToPickup(right.currentLatitude(), right.currentLongitude(), pickupLatitude, pickupLongitude)))
-                .map(driver -> driverService.requireDriver(driver.id()))
+        return driverService.getAvailableDrivers().stream()
+                .min((left, right) -> distanceToPickup(left.getCurrentLatitude(), left.getCurrentLongitude(), pickupLatitude, pickupLongitude)
+                        .compareTo(distanceToPickup(right.getCurrentLatitude(), right.getCurrentLongitude(), pickupLatitude, pickupLongitude)))
                 .orElseThrow(() -> new NotFoundException("No available driver could be assigned for this ride"));
     }
 
@@ -160,7 +165,7 @@ public class RideService {
         }
     }
 
-    private Ride requireRide(UUID rideId) {
+    public Ride requireRideEntity(UUID rideId) {
         return rideRepository.findById(rideId)
                 .orElseThrow(() -> new NotFoundException("Ride " + rideId + " was not found"));
     }
@@ -210,6 +215,7 @@ public class RideService {
                 ride.getDistanceInKm(),
                 ride.getQuotedFare(),
                 ride.getActualFare(),
+                ride.getPlatformCommission(),
                 ride.getRequestedAt(),
                 ride.getAssignedAt(),
                 ride.getPickedUpAt(),

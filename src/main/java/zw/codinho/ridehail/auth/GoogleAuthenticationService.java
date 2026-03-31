@@ -112,6 +112,7 @@ public class GoogleAuthenticationService {
                 rider.getPhoneNumber(),
                 rider.getEmailAddress(),
                 rider.getRating(),
+                rider.getWalletBalance(),
                 rider.getCreatedAt());
     }
 }

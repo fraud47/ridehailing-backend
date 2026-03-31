@@ -33,14 +33,14 @@ public class DriverController {
     private final DriverService driverService;
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('" + AuthRoles.DRIVER + "', '" + AuthRoles.ADMIN + "')")
+    @PreAuthorize("hasAnyRole('" + AuthRoles.DRIVER + "', '" + AuthRoles.ADMIN + "', '" + AuthRoles.SUPER_USER + "')")
     @Operation(summary = "Create driver", description = "Registers a new driver profile")
     public ResponseEntity<ApiResponse<DriverResponse>> createDriver(@Valid @RequestBody CreateDriverRequest request) {
         return ApiResponseFactory.created("Driver registered successfully", driverService.createDriver(request));
     }
 
     @PostMapping("/{driverId}/vehicle")
-    @PreAuthorize("hasAnyRole('" + AuthRoles.DRIVER + "', '" + AuthRoles.ADMIN + "')")
+    @PreAuthorize("hasAnyRole('" + AuthRoles.DRIVER + "', '" + AuthRoles.ADMIN + "', '" + AuthRoles.SUPER_USER + "')")
     @Operation(summary = "Assign vehicle", description = "Registers or updates a driver's vehicle")
     public ResponseEntity<ApiResponse<DriverResponse>> assignVehicle(@PathVariable UUID driverId,
                                                                      @Valid @RequestBody AssignVehicleRequest request) {
@@ -48,7 +48,7 @@ public class DriverController {
     }
 
     @PatchMapping("/{driverId}/availability")
-    @PreAuthorize("hasAnyRole('" + AuthRoles.DRIVER + "', '" + AuthRoles.DISPATCHER + "', '" + AuthRoles.ADMIN + "')")
+    @PreAuthorize("hasAnyRole('" + AuthRoles.DRIVER + "', '" + AuthRoles.DISPATCHER + "', '" + AuthRoles.ADMIN + "', '" + AuthRoles.SUPER_USER + "')")
     @Operation(summary = "Update driver availability", description = "Marks a driver available or offline")
     public ResponseEntity<ApiResponse<DriverResponse>> updateAvailability(@PathVariable UUID driverId,
                                                                           @Valid @RequestBody UpdateDriverAvailabilityRequest request) {
@@ -56,14 +56,14 @@ public class DriverController {
     }
 
     @GetMapping("/{driverId}")
-    @PreAuthorize("hasAnyRole('" + AuthRoles.DRIVER + "', '" + AuthRoles.DISPATCHER + "', '" + AuthRoles.ADMIN + "')")
+    @PreAuthorize("hasAnyRole('" + AuthRoles.DRIVER + "', '" + AuthRoles.DISPATCHER + "', '" + AuthRoles.ADMIN + "', '" + AuthRoles.SUPER_USER + "')")
     @Operation(summary = "Get driver", description = "Fetches a driver by identifier")
     public ResponseEntity<ApiResponse<DriverResponse>> getDriver(@PathVariable UUID driverId) {
         return ApiResponseFactory.ok("Driver fetched successfully", driverService.getDriver(driverId));
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('" + AuthRoles.DISPATCHER + "', '" + AuthRoles.ADMIN + "')")
+    @PreAuthorize("hasAnyRole('" + AuthRoles.DISPATCHER + "', '" + AuthRoles.ADMIN + "', '" + AuthRoles.SUPER_USER + "')")
     @Operation(summary = "List drivers", description = "Lists all drivers")
     public ResponseEntity<ApiResponse<List<DriverResponse>>> getDrivers() {
         return ApiResponseFactory.ok("Drivers fetched successfully", driverService.getDrivers());

@@ -62,6 +62,9 @@ public class Ride extends BaseEntity {
     @Column(precision = 10, scale = 2)
     private BigDecimal actualFare;
 
+    @Column(nullable = false, precision = 10, scale = 2)
+    private BigDecimal platformCommission = BigDecimal.ZERO;
+
     @Column(nullable = false)
     private OffsetDateTime requestedAt;
 

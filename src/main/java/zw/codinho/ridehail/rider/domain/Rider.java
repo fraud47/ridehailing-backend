@@ -26,4 +26,7 @@ public class Rider extends BaseEntity {
 
     @Column(nullable = false, precision = 3, scale = 2)
     private BigDecimal rating = BigDecimal.valueOf(5.00);
+
+    @Column(nullable = false, precision = 12, scale = 2)
+    private BigDecimal walletBalance = BigDecimal.ZERO;
 }

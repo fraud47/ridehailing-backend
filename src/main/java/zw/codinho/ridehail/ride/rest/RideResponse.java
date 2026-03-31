@@ -22,6 +22,7 @@ public record RideResponse(
         BigDecimal distanceInKm,
         BigDecimal quotedFare,
         BigDecimal actualFare,
+        BigDecimal platformCommission,
         OffsetDateTime requestedAt,
         OffsetDateTime assignedAt,
         OffsetDateTime pickedUpAt,

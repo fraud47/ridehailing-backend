@@ -16,6 +16,8 @@ import zw.codinho.ridehail.shared.exception.BadRequestException;
 import zw.codinho.ridehail.shared.exception.ConflictException;
 import zw.codinho.ridehail.shared.exception.NotFoundException;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 import java.util.UUID;
 
@@ -68,6 +70,10 @@ public class DriverService {
     public DriverResponse updateAvailability(UUID driverId, UpdateDriverAvailabilityRequest request) {
         Driver driver = requireDriver(driverId);
 
+        if (driver.isBlocked()) {
+            throw new BadRequestException("Blocked drivers cannot update availability");
+        }
+
         if (request.available() && driver.getVehicle() == null) {
             throw new BadRequestException("A driver cannot go available without a registered vehicle");
         }
@@ -103,17 +109,42 @@ public class DriverService {
 
     @Transactional
     public void markDriverOnTrip(Driver driver) {
+        if (driver.isBlocked()) {
+            throw new BadRequestException("Blocked drivers cannot be assigned to rides");
+        }
         driver.setStatus(DriverStatus.ON_TRIP);
         driverRepository.save(driver);
     }
 
     @Transactional
     public void markDriverAvailable(Driver driver) {
-        driver.setStatus(DriverStatus.AVAILABLE);
+        driver.setStatus(driver.isBlocked() ? DriverStatus.OFFLINE : DriverStatus.AVAILABLE);
         driverRepository.save(driver);
     }
 
-    private DriverResponse toResponse(Driver driver) {
+    @Transactional
+    public void creditRideEarnings(UUID driverId, BigDecimal grossFare, BigDecimal commission) {
+        Driver driver = requireDriver(driverId);
+        BigDecimal normalizedGrossFare = normalizeAmount(grossFare);
+        BigDecimal normalizedCommission = normalizeAmount(commission);
+        BigDecimal netEarnings = normalizedGrossFare.subtract(normalizedCommission);
+        if (netEarnings.signum() < 0) {
+            throw new BadRequestException("Ride commission cannot exceed the gross fare");
+        }
+
+        driver.setWalletBalance(driver.getWalletBalance().add(netEarnings));
+        driverRepository.save(driver);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Driver> getAvailableDrivers() {
+        return driverRepository.findAllByBlockedFalseAndStatus(DriverStatus.AVAILABLE)
+                .stream()
+                .filter(driver -> driver.getVehicle() != null)
+                .toList();
+    }
+
+    public DriverResponse toResponse(Driver driver) {
         VehicleResponse vehicleResponse = null;
         if (driver.getVehicle() != null) {
             vehicleResponse = new VehicleResponse(
@@ -133,9 +164,17 @@ public class DriverService {
                 driver.getLicenseNumber(),
                 driver.getStatus(),
                 driver.getRating(),
+                driver.getWalletBalance(),
+                driver.isBlocked(),
+                driver.getBlockedReason(),
+                driver.getBlockedAt(),
                 driver.getCurrentLatitude(),
                 driver.getCurrentLongitude(),
                 vehicleResponse,
                 driver.getCreatedAt());
+    }
+
+    private BigDecimal normalizeAmount(BigDecimal amount) {
+        return amount.setScale(2, RoundingMode.HALF_UP);
     }
 }

@@ -30,21 +30,21 @@ public class RiderController {
     private final RiderService riderService;
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('" + AuthRoles.RIDER + "', '" + AuthRoles.ADMIN + "')")
+    @PreAuthorize("hasAnyRole('" + AuthRoles.RIDER + "', '" + AuthRoles.ADMIN + "', '" + AuthRoles.SUPER_USER + "')")
     @Operation(summary = "Create rider", description = "Registers a new rider profile")
     public ResponseEntity<ApiResponse<RiderResponse>> createRider(@Valid @RequestBody CreateRiderRequest request) {
         return ApiResponseFactory.created("Rider registered successfully", riderService.createRider(request));
     }
 
     @GetMapping("/{riderId}")
-    @PreAuthorize("hasAnyRole('" + AuthRoles.RIDER + "', '" + AuthRoles.DISPATCHER + "', '" + AuthRoles.ADMIN + "')")
+    @PreAuthorize("hasAnyRole('" + AuthRoles.RIDER + "', '" + AuthRoles.DISPATCHER + "', '" + AuthRoles.ADMIN + "', '" + AuthRoles.SUPER_USER + "')")
     @Operation(summary = "Get rider", description = "Fetches a rider by identifier")
     public ResponseEntity<ApiResponse<RiderResponse>> getRider(@PathVariable UUID riderId) {
         return ApiResponseFactory.ok("Rider fetched successfully", riderService.getRider(riderId));
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('" + AuthRoles.DISPATCHER + "', '" + AuthRoles.ADMIN + "')")
+    @PreAuthorize("hasAnyRole('" + AuthRoles.DISPATCHER + "', '" + AuthRoles.ADMIN + "', '" + AuthRoles.SUPER_USER + "')")
     @Operation(summary = "List riders", description = "Lists all riders")
     public ResponseEntity<ApiResponse<List<RiderResponse>>> getRiders() {
         return ApiResponseFactory.ok("Riders fetched successfully", riderService.getRiders());

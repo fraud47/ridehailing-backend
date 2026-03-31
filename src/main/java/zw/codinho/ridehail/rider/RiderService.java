@@ -3,19 +3,25 @@ package zw.codinho.ridehail.rider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import zw.codinho.ridehail.admin.rest.WalletBalanceResponse;
 import zw.codinho.ridehail.rider.domain.Rider;
 import zw.codinho.ridehail.rider.domain.RiderRepository;
 import zw.codinho.ridehail.rider.rest.CreateRiderRequest;
 import zw.codinho.ridehail.rider.rest.RiderResponse;
+import zw.codinho.ridehail.shared.exception.BadRequestException;
 import zw.codinho.ridehail.shared.exception.ConflictException;
 import zw.codinho.ridehail.shared.exception.NotFoundException;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class RiderService {
+
+    private static final String CURRENCY = "USD";
 
     private final RiderRepository riderRepository;
 
@@ -59,6 +65,31 @@ public class RiderService {
                 .orElseThrow(() -> new NotFoundException("Rider " + riderId + " was not found"));
     }
 
+    @Transactional
+    public WalletBalanceResponse depositFunds(UUID riderId, BigDecimal amount) {
+        Rider rider = requireRider(riderId);
+        BigDecimal normalizedAmount = normalizeAmount(amount);
+        if (normalizedAmount.signum() <= 0) {
+            throw new BadRequestException("Deposit amount must be greater than zero");
+        }
+
+        rider.setWalletBalance(rider.getWalletBalance().add(normalizedAmount));
+        Rider savedRider = riderRepository.save(rider);
+        return new WalletBalanceResponse(savedRider.getId(), savedRider.getWalletBalance(), CURRENCY);
+    }
+
+    @Transactional
+    public void debitWallet(UUID riderId, BigDecimal amount) {
+        Rider rider = requireRider(riderId);
+        BigDecimal normalizedAmount = normalizeAmount(amount);
+        if (rider.getWalletBalance().compareTo(normalizedAmount) < 0) {
+            throw new BadRequestException("Rider wallet balance is insufficient to complete this ride");
+        }
+
+        rider.setWalletBalance(rider.getWalletBalance().subtract(normalizedAmount));
+        riderRepository.save(rider);
+    }
+
     private RiderResponse toResponse(Rider rider) {
         return new RiderResponse(
                 rider.getId(),
@@ -66,6 +97,11 @@ public class RiderService {
                 rider.getPhoneNumber(),
                 rider.getEmailAddress(),
                 rider.getRating(),
+                rider.getWalletBalance(),
                 rider.getCreatedAt());
+    }
+
+    private BigDecimal normalizeAmount(BigDecimal amount) {
+        return amount.setScale(2, RoundingMode.HALF_UP);
     }
 }

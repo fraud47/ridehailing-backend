@@ -35,21 +35,21 @@ public class RideController {
     private final RideService rideService;
 
     @PostMapping("/quotes")
-    @PreAuthorize("hasAnyRole('" + AuthRoles.RIDER + "', '" + AuthRoles.DISPATCHER + "', '" + AuthRoles.ADMIN + "')")
+    @PreAuthorize("hasAnyRole('" + AuthRoles.RIDER + "', '" + AuthRoles.DISPATCHER + "', '" + AuthRoles.ADMIN + "', '" + AuthRoles.SUPER_USER + "')")
     @Operation(summary = "Create fare quote", description = "Calculates distance and estimated fare for a route")
     public ResponseEntity<ApiResponse<RideQuoteResponse>> quoteRide(@Valid @RequestBody RideQuoteRequest request) {
         return ApiResponseFactory.ok("Ride quote generated successfully", rideService.quoteRide(request));
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('" + AuthRoles.RIDER + "', '" + AuthRoles.DISPATCHER + "', '" + AuthRoles.ADMIN + "')")
+    @PreAuthorize("hasAnyRole('" + AuthRoles.RIDER + "', '" + AuthRoles.DISPATCHER + "', '" + AuthRoles.ADMIN + "', '" + AuthRoles.SUPER_USER + "')")
     @Operation(summary = "Request a ride", description = "Creates a ride and automatically assigns the nearest available driver")
     public ResponseEntity<ApiResponse<RideResponse>> createRide(@Valid @RequestBody CreateRideRequest request) {
         return ApiResponseFactory.created("Ride requested successfully", rideService.createRide(request));
     }
 
     @PatchMapping("/{rideId}/status")
-    @PreAuthorize("hasAnyRole('" + AuthRoles.DRIVER + "', '" + AuthRoles.DISPATCHER + "', '" + AuthRoles.ADMIN + "')")
+    @PreAuthorize("hasAnyRole('" + AuthRoles.DRIVER + "', '" + AuthRoles.DISPATCHER + "', '" + AuthRoles.ADMIN + "', '" + AuthRoles.SUPER_USER + "')")
     @Operation(summary = "Update ride status", description = "Moves a ride through its lifecycle")
     public ResponseEntity<ApiResponse<RideResponse>> updateRideStatus(@PathVariable UUID rideId,
                                                                       @Valid @RequestBody UpdateRideStatusRequest request) {
@@ -57,14 +57,14 @@ public class RideController {
     }
 
     @GetMapping("/{rideId}")
-    @PreAuthorize("hasAnyRole('" + AuthRoles.RIDER + "', '" + AuthRoles.DRIVER + "', '" + AuthRoles.DISPATCHER + "', '" + AuthRoles.ADMIN + "')")
+    @PreAuthorize("hasAnyRole('" + AuthRoles.RIDER + "', '" + AuthRoles.DRIVER + "', '" + AuthRoles.DISPATCHER + "', '" + AuthRoles.ADMIN + "', '" + AuthRoles.SUPER_USER + "')")
     @Operation(summary = "Get ride", description = "Fetches a ride by identifier")
     public ResponseEntity<ApiResponse<RideResponse>> getRide(@PathVariable UUID rideId) {
         return ApiResponseFactory.ok("Ride fetched successfully", rideService.getRide(rideId));
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('" + AuthRoles.DISPATCHER + "', '" + AuthRoles.ADMIN + "')")
+    @PreAuthorize("hasAnyRole('" + AuthRoles.DISPATCHER + "', '" + AuthRoles.ADMIN + "', '" + AuthRoles.SUPER_USER + "')")
     @Operation(summary = "List rides", description = "Lists rides, optionally filtered by rider or driver")
     public ResponseEntity<ApiResponse<List<RideResponse>>> getRides(@RequestParam(required = false) UUID riderId,
                                                                     @RequestParam(required = false) UUID driverId) {

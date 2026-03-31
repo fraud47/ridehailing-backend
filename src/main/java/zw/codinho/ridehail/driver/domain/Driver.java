@@ -37,6 +37,16 @@ public class Driver extends BaseEntity {
     @Column(nullable = false, precision = 3, scale = 2)
     private BigDecimal rating = BigDecimal.valueOf(5.00);
 
+    @Column(nullable = false, precision = 12, scale = 2)
+    private BigDecimal walletBalance = BigDecimal.ZERO;
+
+    @Column(nullable = false)
+    private boolean blocked;
+
+    private String blockedReason;
+
+    private java.time.OffsetDateTime blockedAt;
+
     @Column(nullable = false, precision = 10, scale = 7)
     private BigDecimal currentLatitude;
 

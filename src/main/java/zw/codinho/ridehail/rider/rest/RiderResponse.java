@@ -10,6 +10,7 @@ public record RiderResponse(
         String phoneNumber,
         String emailAddress,
         BigDecimal rating,
+        BigDecimal walletBalance,
         OffsetDateTime createdAt
 ) {
 }

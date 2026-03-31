@@ -4,5 +4,6 @@ public enum UserRole {
     RIDER,
     DRIVER,
     DISPATCHER,
-    ADMIN
+    ADMIN,
+    SUPER_USER
 }
