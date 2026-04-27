@@ -74,11 +74,11 @@ public class AdminController {
         return ApiResponseFactory.ok("Dashboard metrics fetched successfully", adminService.getDashboardMetrics());
     }
 
-    @PatchMapping("/auth-accounts/{authAccountId}/role")
+    @PatchMapping({"/auth-accounts/{authAccountId}/role", "/auth-accounts/{authAccountId}/roles"})
     @PreAuthorize("hasRole('" + AuthRoles.SUPER_USER + "')")
-    @Operation(summary = "Update auth account role", description = "Promotes or demotes an auth account, including the SUPER_USER role")
+    @Operation(summary = "Update auth account roles", description = "Promotes or demotes an auth account, including the SUPER_USER role")
     public ResponseEntity<ApiResponse<AuthAccountRoleResponse>> updateUserRole(@PathVariable UUID authAccountId,
                                                                                @Valid @RequestBody UpdateUserRoleRequest request) {
-        return ApiResponseFactory.ok("User role updated successfully", adminService.updateUserRole(authAccountId, request.role()));
+        return ApiResponseFactory.ok("User roles updated successfully", adminService.updateUserRoles(authAccountId, request.roles()));
     }
 }

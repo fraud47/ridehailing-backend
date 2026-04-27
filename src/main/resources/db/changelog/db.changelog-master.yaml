@@ -7,3 +7,5 @@ databaseChangeLog:
       file: db/changelog/003-add-wallet-admin-and-chat.sql
   - include:
       file: db/changelog/004-create-wallet-service.sql
+  - include:
+      file: db/changelog/005-support-multi-role-auth-accounts.sql

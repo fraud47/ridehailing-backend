@@ -11,7 +11,6 @@ import zw.codinho.ridehail.auth.domain.AuthAccount;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
-import java.util.List;
 
 @Service
 public class LocalJwtService {
@@ -27,6 +26,10 @@ public class LocalJwtService {
     public TokenResult issueToken(AuthAccount account) {
         OffsetDateTime issuedAt = OffsetDateTime.now(ZoneOffset.UTC);
         OffsetDateTime expiresAt = issuedAt.plus(authProperties.getJwt().getAccessTokenTtl());
+        var roles = account.getRoles().stream()
+                .map(Enum::name)
+                .sorted()
+                .toList();
 
         JwtClaimsSet.Builder claims = JwtClaimsSet.builder()
                 .issuer(authProperties.getJwt().getIssuerUri())
@@ -36,12 +39,15 @@ public class LocalJwtService {
                 .claim("email", account.getEmailAddress())
                 .claim("preferred_username", account.getEmailAddress())
                 .claim("name", account.getDisplayName())
-                .claim("roles", List.of(account.getRole().name()))
+                .claim("roles", roles)
                 .claim("provider", account.getProvider().name())
                 .claim("provider_subject", account.getProviderSubject());
 
         if (account.getRider() != null) {
             claims.claim("rider_id", account.getRider().getId().toString());
+        }
+        if (account.getDriver() != null) {
+            claims.claim("driver_id", account.getDriver().getId().toString());
         }
 
         String token = jwtEncoder.encode(JwtEncoderParameters.from(

@@ -24,6 +24,9 @@ import zw.codinho.ridehail.wallet.domain.WalletOwnerType;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.Comparator;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -88,12 +91,22 @@ public class AdminService {
     }
 
     @Transactional
-    public AuthAccountRoleResponse updateUserRole(UUID authAccountId, UserRole role) {
+    public AuthAccountRoleResponse updateUserRoles(UUID authAccountId, Set<UserRole> roles) {
         AuthAccount account = authAccountRepository.findById(authAccountId)
                 .orElseThrow(() -> new NotFoundException("Auth account " + authAccountId + " was not found"));
-        account.setRole(role);
+        LinkedHashSet<UserRole> normalizedRoles = new LinkedHashSet<>(roles);
+        if (account.getRider() != null) {
+            normalizedRoles.add(UserRole.RIDER);
+        }
+        if (account.getDriver() != null) {
+            normalizedRoles.add(UserRole.DRIVER);
+        }
+        account.setRoles(normalizedRoles);
         AuthAccount savedAccount = authAccountRepository.save(account);
-        return new AuthAccountRoleResponse(savedAccount.getId(), savedAccount.getEmailAddress(), savedAccount.getRole());
+        return new AuthAccountRoleResponse(
+                savedAccount.getId(),
+                savedAccount.getEmailAddress(),
+                savedAccount.getRoles().stream().sorted(Comparator.comparing(Enum::name)).toList());
     }
 
     public zw.codinho.ridehail.admin.rest.WalletBalanceResponse depositRiderFunds(UUID riderId, BigDecimal amount) {

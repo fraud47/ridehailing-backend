@@ -7,9 +7,11 @@ public record CurrentUserResponse(
         String subject,
         String username,
         String email,
-        List<String> authorities
+        List<String> authorities,
+        String riderId,
+        String driverId
 ) {
     public static CurrentUserResponse anonymousUser() {
-        return new CurrentUserResponse(true, null, null, null, List.of());
+        return new CurrentUserResponse(true, null, null, null, List.of(), null, null);
     }
 }

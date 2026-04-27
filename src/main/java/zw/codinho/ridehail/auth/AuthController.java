@@ -29,7 +29,7 @@ public class AuthController {
     @Operation(summary = "Google login", description = "Verifies a Google ID token, creates the rider if needed, and returns an API JWT")
     public ResponseEntity<ApiResponse<AuthTokenResponse>> googleLogin(@Valid @RequestBody GoogleLoginRequest request) {
         AuthTokenResponse response = googleAuthenticationService.authenticate(request);
-        String message = response.newUser() ? "Google login successful and rider profile created" : "Google login successful";
+        String message = response.newUser() ? "Google login successful and account created" : "Google login successful";
         return ApiResponseFactory.ok(message, response);
     }
 
@@ -52,6 +52,8 @@ public class AuthController {
                         jwtAuthenticationToken.getName(),
                         jwtAuthenticationToken.getToken().getClaimAsString("preferred_username"),
                         jwtAuthenticationToken.getToken().getClaimAsString("email"),
-                        roles));
+                        roles,
+                        jwtAuthenticationToken.getToken().getClaimAsString("rider_id"),
+                        jwtAuthenticationToken.getToken().getClaimAsString("driver_id")));
     }
 }

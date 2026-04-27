@@ -49,4 +49,4 @@ app:
       issuer-uri: ${AUTH_SERVER_ISSUER_URI:http://localhost:8180/realms/ride-hailing}
       jwk-set-uri: ${AUTH_SERVER_JWK_SET_URI:http://localhost:8180/realms/ride-hailing/protocol/openid-connect/certs}
     google:
-      client-ids: ${GOOGLE_CLIENT_IDS:}
+      client-ids: ${GOOGLE_CLIENT_IDS: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}

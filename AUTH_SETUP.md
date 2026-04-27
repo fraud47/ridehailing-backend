@@ -72,7 +72,8 @@ Invoke-RestMethod `
   -ContentType "application/json" `
   -Body '{
     "idToken": "GOOGLE_ID_TOKEN",
-    "phoneNumber": "+263771234567"
+    "phoneNumber": "+263771234567",
+    "requestedRoles": ["RIDER"]
   }'
 ```
 
@@ -80,11 +81,38 @@ Behavior:
 
 - Verifies the Google ID token against the configured Google client ID
 - Looks for an existing linked auth account
-- Falls back to rider lookup by email address
-- Creates a rider automatically if no rider exists
+- Creates or refreshes rider and driver links on the same auth account
+- Defaults to `RIDER` when no `requestedRoles` are supplied
 - Returns a local JWT for subsequent API calls
 
 `phoneNumber` is optional for Google-created riders. Existing manual rider creation still requires it.
+
+To onboard a user as both rider and driver in one Google login call:
+
+```powershell
+Invoke-RestMethod `
+  -Method Post `
+  -Uri "http://localhost:8080/api/v1/auth/google/login" `
+  -ContentType "application/json" `
+  -Body '{
+    "idToken": "GOOGLE_ID_TOKEN",
+    "phoneNumber": "+263771234567",
+    "requestedRoles": ["RIDER", "DRIVER"],
+    "driver": {
+      "phoneNumber": "+263772345678",
+      "licenseNumber": "LIC-2026-001",
+      "currentLatitude": -17.825166,
+      "currentLongitude": 31.033510
+    }
+  }'
+```
+
+For local Google login to work end-to-end you still need all of the following:
+
+1. A Google OAuth client in Google Cloud for your web/mobile frontend.
+2. The matching client ID added to `GOOGLE_CLIENT_IDS` on this backend.
+3. The frontend Google SDK to send the `idToken` from Google sign-in to `/api/v1/auth/google/login`.
+4. `APP_JWT_SECRET` configured so this service can mint its own bearer token after Google verification.
 
 ## Get a token
 
